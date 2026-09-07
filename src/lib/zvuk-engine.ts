@@ -42,7 +42,7 @@ const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", 
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)]!;
-const mtof = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
+const mtof = (m: number) => 432 * Math.pow(2, (m - 69) / 12);
 
 export interface MusicalState {
   root: number;
