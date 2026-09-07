@@ -64,7 +64,7 @@ export class ZvukEngine {
   private droneFilter!: BiquadFilterNode;
   private droneOscs: OscillatorNode[] = [];
   private timer: number | null = null;
-  private data!: Uint8Array;
+  private data!: Uint8Array<ArrayBuffer>;
 
   params: Params = { ...DEFAULT_PARAMS };
   private root = 62; // D
@@ -100,7 +100,7 @@ export class ZvukEngine {
     this.analyser = ctx.createAnalyser();
     this.analyser.fftSize = 1024;
     this.analyser.smoothingTimeConstant = 0.85;
-    this.data = new Uint8Array(this.analyser.frequencyBinCount);
+    this.data = new Uint8Array(new ArrayBuffer(this.analyser.frequencyBinCount));
     this.master.connect(this.analyser);
     this.analyser.connect(ctx.destination);
 
