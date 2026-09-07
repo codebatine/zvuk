@@ -132,6 +132,11 @@
   --sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
+@theme inline {
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Space Grotesk", ui-monospace, monospace;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
@@ -140,5 +145,67 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@utility zvuk-range {
+  width: 100%;
+  height: 22px;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+
+  &::-webkit-slider-runnable-track {
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      var(--color-foreground) var(--pct, 50%),
+      var(--color-border) var(--pct, 50%)
+    );
+  }
+  &::-moz-range-track {
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      var(--color-foreground) var(--pct, 50%),
+      var(--color-border) var(--pct, 50%)
+    );
+  }
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--color-foreground);
+    margin-top: -4px;
+    transition: transform 0.25s ease;
+  }
+  &:hover::-webkit-slider-thumb {
+    transform: scale(1.35);
+    background: var(--color-accent);
+  }
+  &::-moz-range-thumb {
+    width: 9px;
+    height: 9px;
+    border: none;
+    border-radius: 50%;
+    background: var(--color-foreground);
+  }
+}
+
+@utility zvuk-fade {
+  animation: zvuk-fade-in 1.6s ease-out both;
+}
+
+@keyframes zvuk-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
