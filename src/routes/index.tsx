@@ -153,7 +153,7 @@ function Zvuk() {
             {PRESETS.map((p) => (
               <button
                 key={p.name}
-                onClick={() => applyPreset(p.name, p.params)}
+                onClick={() => applyPreset(p.name, p.params, p.character ?? "analog")}
                 className={`text-[10px] tracking-[0.3em] transition-colors duration-500 ${
                   preset === p.name
                     ? "text-accent"
