@@ -20,14 +20,20 @@ export const DEFAULT_PARAMS: Params = {
   harmony: 0.5,
 };
 
-export const PRESETS: { name: string; params: Params }[] = [
+export type Character = "analog" | "ethereal";
+
+export const PRESETS: { name: string; params: Params; character?: Character }[] = [
   { name: "DEEP", params: { space: 0.85, motion: 0.3, pulse: 0.15, warmth: 0.8, density: 0.3, harmony: 0.35 } },
   { name: "KOSMISCHE", params: { space: 0.7, motion: 0.6, pulse: 0.8, warmth: 0.7, density: 0.6, harmony: 0.55 } },
   { name: "NIGHT", params: { space: 0.75, motion: 0.35, pulse: 0.3, warmth: 0.55, density: 0.35, harmony: 0.6 } },
   { name: "DRIFT", params: { space: 0.9, motion: 0.75, pulse: 0.1, warmth: 0.6, density: 0.25, harmony: 0.45 } },
   { name: "DAWN", params: { space: 0.6, motion: 0.5, pulse: 0.45, warmth: 0.85, density: 0.55, harmony: 0.75 } },
   { name: "SUSPENDED", params: { space: 1.0, motion: 0.2, pulse: 0.05, warmth: 0.7, density: 0.2, harmony: 0.5 } },
+  { name: "AGUIRRE", params: { space: 0.95, motion: 0.3, pulse: 0.1, warmth: 0.75, density: 0.35, harmony: 0.7 }, character: "ethereal" },
+  { name: "HOSANNA", params: { space: 0.85, motion: 0.45, pulse: 0.25, warmth: 0.8, density: 0.5, harmony: 0.85 }, character: "ethereal" },
+  { name: "VEIL", params: { space: 1.0, motion: 0.55, pulse: 0.05, warmth: 0.65, density: 0.25, harmony: 0.6 }, character: "ethereal" },
 ];
+
 
 const SCALES: Record<string, number[]> = {
   aeolian: [0, 2, 3, 5, 7, 8, 10],
