@@ -6,6 +6,7 @@ import {
   DEFAULT_PARAMS,
   PRESETS,
   ZvukEngine,
+  type Character,
   type ParamKey,
   type Params,
 } from "@/lib/zvuk-engine";
@@ -48,6 +49,7 @@ function Zvuk() {
   const [preset, setPreset] = useState<string | null>(null);
   const [panel, setPanel] = useState(false);
   const [rhythm, setRhythm] = useState(false);
+  const [character, setCharacter] = useState<Character>("analog");
 
   const engine = () => {
     if (!engineRef.current) {
@@ -81,10 +83,19 @@ function Zvuk() {
     setPreset(null);
   };
 
-  const applyPreset = (name: string, p: Params) => {
+  const applyPreset = (name: string, p: Params, c?: Character) => {
     setParams({ ...p });
     engine().setParams(p);
+    if (c) {
+      setCharacter(c);
+      engine().setCharacter(c);
+    }
     setPreset(name);
+  };
+
+  const switchCharacter = (c: Character) => {
+    setCharacter(c);
+    engine().setCharacter(c);
   };
 
   return (
@@ -111,7 +122,22 @@ function Zvuk() {
           <p className="text-[10px] tracking-[0.32em] text-muted-foreground transition-opacity duration-1000">
             {playing ? label : "AN EVER-CHANGING ELECTRONIC SOUNDSCAPE"}
           </p>
+          <div className="flex items-center gap-5">
+            {(["analog", "ethereal"] as Character[]).map((c) => (
+              <button
+                key={c}
+                onClick={() => switchCharacter(c)}
+                aria-pressed={character === c}
+                className={`text-[10px] tracking-[0.4em] transition-colors duration-500 ${
+                  character === c ? "text-foreground" : "text-muted-foreground/60 hover:text-foreground"
+                }`}
+              >
+                {c.toUpperCase()}
+              </button>
+            ))}
+          </div>
           <div className="flex items-center gap-8">
+
             <button
               onClick={() => {
                 const next = !rhythm;
@@ -144,7 +170,7 @@ function Zvuk() {
             {PRESETS.map((p) => (
               <button
                 key={p.name}
-                onClick={() => applyPreset(p.name, p.params)}
+                onClick={() => applyPreset(p.name, p.params, p.character ?? "analog")}
                 className={`text-[10px] tracking-[0.3em] transition-colors duration-500 ${
                   preset === p.name
                     ? "text-accent"

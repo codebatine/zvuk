@@ -20,14 +20,20 @@ export const DEFAULT_PARAMS: Params = {
   harmony: 0.5,
 };
 
-export const PRESETS: { name: string; params: Params }[] = [
+export type Character = "analog" | "ethereal";
+
+export const PRESETS: { name: string; params: Params; character?: Character }[] = [
   { name: "DEEP", params: { space: 0.85, motion: 0.3, pulse: 0.15, warmth: 0.8, density: 0.3, harmony: 0.35 } },
   { name: "KOSMISCHE", params: { space: 0.7, motion: 0.6, pulse: 0.8, warmth: 0.7, density: 0.6, harmony: 0.55 } },
   { name: "NIGHT", params: { space: 0.75, motion: 0.35, pulse: 0.3, warmth: 0.55, density: 0.35, harmony: 0.6 } },
   { name: "DRIFT", params: { space: 0.9, motion: 0.75, pulse: 0.1, warmth: 0.6, density: 0.25, harmony: 0.45 } },
   { name: "DAWN", params: { space: 0.6, motion: 0.5, pulse: 0.45, warmth: 0.85, density: 0.55, harmony: 0.75 } },
   { name: "SUSPENDED", params: { space: 1.0, motion: 0.2, pulse: 0.05, warmth: 0.7, density: 0.2, harmony: 0.5 } },
+  { name: "AGUIRRE", params: { space: 0.95, motion: 0.3, pulse: 0.1, warmth: 0.75, density: 0.35, harmony: 0.7 }, character: "ethereal" },
+  { name: "HOSANNA", params: { space: 0.85, motion: 0.45, pulse: 0.25, warmth: 0.8, density: 0.5, harmony: 0.85 }, character: "ethereal" },
+  { name: "VEIL", params: { space: 1.0, motion: 0.55, pulse: 0.05, warmth: 0.65, density: 0.25, harmony: 0.6 }, character: "ethereal" },
 ];
+
 
 const SCALES: Record<string, number[]> = {
   aeolian: [0, 2, 3, 5, 7, 8, 10],
@@ -69,6 +75,7 @@ export class ZvukEngine {
   private data!: Uint8Array<ArrayBuffer>;
   rhythm = false;
   private groove = 0; // pattern variant
+  character: Character = "analog";
 
   params: Params = { ...DEFAULT_PARAMS };
   private root = 62; // D
@@ -231,11 +238,17 @@ export class ZvukEngine {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     const p = this.params;
-    this.reverbGain.gain.setTargetAtTime(0.18 + p.space * 0.75, t, 1.5);
+    const eth = this.character === "ethereal";
+    this.reverbGain.gain.setTargetAtTime((eth ? 0.4 : 0.18) + p.space * (eth ? 0.9 : 0.75), t, 1.5);
     this.delayGain.gain.setTargetAtTime(0.1 + p.space * 0.4, t, 1.5);
     this.delayFb.gain.setTargetAtTime(0.25 + p.space * 0.4, t, 1.5);
-    this.droneFilter.frequency.setTargetAtTime(220 + p.warmth * 300 + (1 - p.warmth) * 500, t, 3);
-    this.droneGain.gain.setTargetAtTime(0.1 + (1 - p.pulse) * 0.14, t, 3);
+    this.droneFilter.frequency.setTargetAtTime((eth ? 180 : 220) + p.warmth * 300 + (1 - p.warmth) * 500, t, 3);
+    this.droneGain.gain.setTargetAtTime((eth ? 0.08 : 0.1) + (1 - p.pulse) * 0.14, t, 3);
+  }
+
+  setCharacter(c: Character) {
+    this.character = c;
+    this.applyParams();
   }
 
   private scale() {
@@ -251,37 +264,86 @@ export class ZvukEngine {
 
   private voice(midi: number, time: number, dur: number, level: number, bright: number) {
     const ctx = this.ctx!;
+    const eth = this.character === "ethereal";
     const out = ctx.createGain();
     out.gain.value = 0;
     const filt = ctx.createBiquadFilter();
     filt.type = "lowpass";
     const w = this.params.warmth;
-    const cut = 500 + bright * 2600 * (1 - w * 0.45);
+    const cut = (eth ? 380 : 500) + bright * (eth ? 1500 : 2600) * (1 - w * 0.45);
     filt.frequency.setValueAtTime(cut, time);
-    filt.frequency.exponentialRampToValueAtTime(Math.max(180, cut * 0.35), time + dur);
-    filt.Q.value = 1.2 + w * 2;
+    filt.frequency.exponentialRampToValueAtTime(Math.max(160, cut * (eth ? 0.55 : 0.35)), time + dur);
+    filt.Q.value = eth ? 0.8 : 1.2 + w * 2;
 
     const oscs: OscillatorNode[] = [];
-    for (let i = 0; i < 2; i++) {
+    const count = eth ? 3 : 2;
+    for (let i = 0; i < count; i++) {
       const o = ctx.createOscillator();
-      o.type = w > 0.5 ? "sawtooth" : "triangle";
-      o.frequency.value = mtof(midi);
-      o.detune.value = (i === 0 ? -1 : 1) * (4 + w * 9) + rand(-3, 3);
-      o.connect(filt);
+      o.type = eth ? (i === 2 ? "sine" : "triangle") : w > 0.5 ? "sawtooth" : "triangle";
+      o.frequency.value = mtof(midi + (eth && i === 2 ? 12 : 0));
+      o.detune.value = (i === 0 ? -1 : 1) * (eth ? 6 + w * 5 : 4 + w * 9) + rand(-3, 3);
+      if (eth) {
+        // slow breathing vibrato — voices, not machines
+        const v = ctx.createOscillator();
+        v.frequency.value = rand(3.2, 4.8);
+        const vg = ctx.createGain();
+        vg.gain.value = rand(3, 8);
+        v.connect(vg);
+        vg.connect(o.detune);
+        v.start(time);
+        v.stop(time + dur + 0.8);
+        const g = ctx.createGain();
+        g.gain.value = i === 2 ? 0.35 : 1;
+        o.connect(g);
+        g.connect(filt);
+      } else {
+        o.connect(filt);
+      }
       o.start(time);
       o.stop(time + dur + 0.6);
       oscs.push(o);
     }
     filt.connect(out);
-    const atk = 0.02 + (1 - this.params.pulse) * 0.5;
+    const atk = eth
+      ? 0.5 + (1 - this.params.pulse) * 1.6
+      : 0.02 + (1 - this.params.pulse) * 0.5;
     out.gain.setValueAtTime(0.0001, time);
-    out.gain.exponentialRampToValueAtTime(Math.max(0.0002, level), time + atk);
-    out.gain.exponentialRampToValueAtTime(0.0001, time + dur + 0.5);
+    out.gain.exponentialRampToValueAtTime(Math.max(0.0002, level * (eth ? 0.9 : 1)), time + atk);
+    out.gain.exponentialRampToValueAtTime(0.0001, time + dur + (eth ? 1.6 : 0.5));
 
     out.connect(this.master);
     out.connect(this.delayGain);
     out.connect(this.reverbGain);
     oscs[oscs.length - 1]!.onended = () => out.disconnect();
+  }
+
+  // bell / zither-like tone — sparse points of light over the choir
+  private bell(midi: number, time: number, level: number) {
+    const ctx = this.ctx!;
+    const car = ctx.createOscillator();
+    car.type = "sine";
+    car.frequency.value = mtof(midi);
+    const mod = ctx.createOscillator();
+    mod.type = "sine";
+    mod.frequency.value = mtof(midi) * rand(2.4, 3.6);
+    const mg = ctx.createGain();
+    mg.gain.setValueAtTime(mtof(midi) * 2.2, time);
+    mg.gain.exponentialRampToValueAtTime(1, time + 1.6);
+    mod.connect(mg);
+    mg.connect(car.frequency);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, time);
+    g.gain.exponentialRampToValueAtTime(level, time + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 4.5);
+    car.connect(g);
+    g.connect(this.master);
+    g.connect(this.reverbGain);
+    g.connect(this.delayGain);
+    car.start(time);
+    mod.start(time);
+    car.stop(time + 5);
+    mod.stop(time + 5);
+    car.onended = () => g.disconnect();
   }
 
   // ---- rhythm section: vintage analog drum voices --------------------------
@@ -405,31 +467,43 @@ export class ZvukEngine {
 
     if (this.rhythm) this.drums(s, time, beat);
 
+    const eth = this.character === "ethereal";
 
     // sequencer pulse
-    if (p.pulse > 0.12 && Math.random() < 0.25 + p.pulse * 0.65) {
+    if (p.pulse > 0.12 && Math.random() < (eth ? 0.12 + p.pulse * 0.3 : 0.25 + p.pulse * 0.65)) {
       const deg = this.motif[s % this.motif.length]! + (Math.random() < 0.2 ? 7 : 0);
       const oct = Math.random() < 0.25 ? 1 : 0;
-      this.voice(this.degreeToMidi(deg, oct), time, beat * (0.4 + (1 - p.pulse) * 1.2), 0.05 + p.pulse * 0.07, 0.5 + p.pulse * 0.4);
+      this.voice(this.degreeToMidi(deg, oct), time, beat * (eth ? rand(2, 4) : 0.4 + (1 - p.pulse) * 1.2), (eth ? 0.035 : 0.05) + p.pulse * 0.07, 0.5 + p.pulse * 0.4);
     }
 
-    // sparse melodic motif
+    // sparse melodic motif — a sung line
     if (s % 8 === 0 && Math.random() < 0.3 + p.density * 0.5) {
       const deg = pick(this.motif) + 7;
-      this.voice(this.degreeToMidi(deg, 1), time + beat * rand(0, 0.5), beat * rand(2, 5), 0.045, 0.8);
+      this.voice(this.degreeToMidi(deg, 1), time + beat * rand(0, 0.5), beat * rand(eth ? 4 : 2, eth ? 9 : 5), 0.045, eth ? 0.5 : 0.8);
     }
 
-    // pad swell
+    // bells / zither points of light
+    if (eth && s % 4 === 0 && Math.random() < 0.18 + p.density * 0.45) {
+      this.bell(this.degreeToMidi(pick(this.motif) + pick([0, 7, 14]), 1), time + beat * rand(0, 0.6), 0.03 + p.density * 0.03);
+    }
+
+    // pad swell / choir
     if (s % 16 === 0 && Math.random() < 0.35 + p.density * 0.5) {
       const chordDegs = p.harmony > 0.6 ? [0, 2, 4, 6] : p.harmony > 0.3 ? [0, 2, 4] : [0, 4];
       const rot = Math.floor(rand(0, 4));
       chordDegs.forEach((d, i) =>
-        this.voice(this.degreeToMidi(d + rot), time + i * 0.08, beat * rand(6, 12), 0.035, 0.35 + p.harmony * 0.3),
+        this.voice(
+          this.degreeToMidi(d + rot, eth && i > 1 ? 1 : 0),
+          time + i * (eth ? rand(0.3, 1.1) : 0.08),
+          beat * rand(eth ? 10 : 6, eth ? 20 : 12),
+          eth ? 0.03 : 0.035,
+          0.35 + p.harmony * 0.3,
+        ),
       );
     }
 
     // low sub accent
-    if (s % 16 === 0 && p.pulse > 0.4) {
+    if (s % 16 === 0 && p.pulse > 0.4 && !eth) {
       this.voice(this.root - 12, time, beat * 2, 0.07, 0.15);
     }
 
