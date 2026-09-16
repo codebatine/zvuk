@@ -500,8 +500,18 @@ export class ZvukEngine {
     }, 4000);
   }
 
+  setRhythm(on: boolean) {
+    this.rhythm = on;
+    if (on) {
+      // start the pattern from its downbeat so it locks in musically
+      this.step = 0;
+      if (this.ctx) this.drumBus?.gain.setTargetAtTime(0.9, this.ctx.currentTime, 0.6);
+    }
+  }
+
   mutate() {
     // same machine, new direction
+    if (Math.random() < 0.5) this.groove = (this.groove + pick([1, 2])) % 3;
     this.motif = this.motif.map((d) => (Math.random() < 0.5 ? d + pick([-2, -1, 1, 2]) : d));
     if (Math.random() < 0.5) this.root += pick([-3, 2, 3, -5]);
     if (this.root > 67) this.root -= 12;
