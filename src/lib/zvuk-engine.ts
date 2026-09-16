@@ -75,6 +75,7 @@ export class ZvukEngine {
   private data!: Uint8Array<ArrayBuffer>;
   rhythm = false;
   private groove = 0; // pattern variant
+  character: Character = "analog";
 
   params: Params = { ...DEFAULT_PARAMS };
   private root = 62; // D
