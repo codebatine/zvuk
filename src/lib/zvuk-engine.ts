@@ -403,6 +403,9 @@ export class ZvukEngine {
     const s = this.step;
     const beat = 60 / this.bpm;
 
+    if (this.rhythm) this.drums(s, time, beat);
+
+
     // sequencer pulse
     if (p.pulse > 0.12 && Math.random() < 0.25 + p.pulse * 0.65) {
       const deg = this.motif[s % this.motif.length]! + (Math.random() < 0.2 ? 7 : 0);
