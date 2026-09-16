@@ -30,8 +30,6 @@ export const PRESETS: { name: string; params: Params; character?: Character }[] 
   { name: "DAWN", params: { space: 0.6, motion: 0.5, pulse: 0.45, warmth: 0.85, density: 0.55, harmony: 0.75 } },
   { name: "SUSPENDED", params: { space: 1.0, motion: 0.2, pulse: 0.05, warmth: 0.7, density: 0.2, harmony: 0.5 } },
   { name: "AGUIRRE", params: { space: 0.95, motion: 0.3, pulse: 0.1, warmth: 0.75, density: 0.35, harmony: 0.7 }, character: "ethereal" },
-  { name: "HOSANNA", params: { space: 0.85, motion: 0.45, pulse: 0.25, warmth: 0.8, density: 0.5, harmony: 0.85 }, character: "ethereal" },
-  { name: "VEIL", params: { space: 1.0, motion: 0.55, pulse: 0.05, warmth: 0.65, density: 0.25, harmony: 0.6 }, character: "ethereal" },
 ];
 
 
