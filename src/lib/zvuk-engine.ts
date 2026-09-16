@@ -251,37 +251,86 @@ export class ZvukEngine {
 
   private voice(midi: number, time: number, dur: number, level: number, bright: number) {
     const ctx = this.ctx!;
+    const eth = this.character === "ethereal";
     const out = ctx.createGain();
     out.gain.value = 0;
     const filt = ctx.createBiquadFilter();
     filt.type = "lowpass";
     const w = this.params.warmth;
-    const cut = 500 + bright * 2600 * (1 - w * 0.45);
+    const cut = (eth ? 380 : 500) + bright * (eth ? 1500 : 2600) * (1 - w * 0.45);
     filt.frequency.setValueAtTime(cut, time);
-    filt.frequency.exponentialRampToValueAtTime(Math.max(180, cut * 0.35), time + dur);
-    filt.Q.value = 1.2 + w * 2;
+    filt.frequency.exponentialRampToValueAtTime(Math.max(160, cut * (eth ? 0.55 : 0.35)), time + dur);
+    filt.Q.value = eth ? 0.8 : 1.2 + w * 2;
 
     const oscs: OscillatorNode[] = [];
-    for (let i = 0; i < 2; i++) {
+    const count = eth ? 3 : 2;
+    for (let i = 0; i < count; i++) {
       const o = ctx.createOscillator();
-      o.type = w > 0.5 ? "sawtooth" : "triangle";
-      o.frequency.value = mtof(midi);
-      o.detune.value = (i === 0 ? -1 : 1) * (4 + w * 9) + rand(-3, 3);
-      o.connect(filt);
+      o.type = eth ? (i === 2 ? "sine" : "triangle") : w > 0.5 ? "sawtooth" : "triangle";
+      o.frequency.value = mtof(midi + (eth && i === 2 ? 12 : 0));
+      o.detune.value = (i === 0 ? -1 : 1) * (eth ? 6 + w * 5 : 4 + w * 9) + rand(-3, 3);
+      if (eth) {
+        // slow breathing vibrato — voices, not machines
+        const v = ctx.createOscillator();
+        v.frequency.value = rand(3.2, 4.8);
+        const vg = ctx.createGain();
+        vg.gain.value = rand(3, 8);
+        v.connect(vg);
+        vg.connect(o.detune);
+        v.start(time);
+        v.stop(time + dur + 0.8);
+        const g = ctx.createGain();
+        g.gain.value = i === 2 ? 0.35 : 1;
+        o.connect(g);
+        g.connect(filt);
+      } else {
+        o.connect(filt);
+      }
       o.start(time);
       o.stop(time + dur + 0.6);
       oscs.push(o);
     }
     filt.connect(out);
-    const atk = 0.02 + (1 - this.params.pulse) * 0.5;
+    const atk = eth
+      ? 0.5 + (1 - this.params.pulse) * 1.6
+      : 0.02 + (1 - this.params.pulse) * 0.5;
     out.gain.setValueAtTime(0.0001, time);
-    out.gain.exponentialRampToValueAtTime(Math.max(0.0002, level), time + atk);
-    out.gain.exponentialRampToValueAtTime(0.0001, time + dur + 0.5);
+    out.gain.exponentialRampToValueAtTime(Math.max(0.0002, level * (eth ? 0.9 : 1)), time + atk);
+    out.gain.exponentialRampToValueAtTime(0.0001, time + dur + (eth ? 1.6 : 0.5));
 
     out.connect(this.master);
     out.connect(this.delayGain);
     out.connect(this.reverbGain);
     oscs[oscs.length - 1]!.onended = () => out.disconnect();
+  }
+
+  // bell / zither-like tone — sparse points of light over the choir
+  private bell(midi: number, time: number, level: number) {
+    const ctx = this.ctx!;
+    const car = ctx.createOscillator();
+    car.type = "sine";
+    car.frequency.value = mtof(midi);
+    const mod = ctx.createOscillator();
+    mod.type = "sine";
+    mod.frequency.value = mtof(midi) * rand(2.4, 3.6);
+    const mg = ctx.createGain();
+    mg.gain.setValueAtTime(mtof(midi) * 2.2, time);
+    mg.gain.exponentialRampToValueAtTime(1, time + 1.6);
+    mod.connect(mg);
+    mg.connect(car.frequency);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, time);
+    g.gain.exponentialRampToValueAtTime(level, time + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 4.5);
+    car.connect(g);
+    g.connect(this.master);
+    g.connect(this.reverbGain);
+    g.connect(this.delayGain);
+    car.start(time);
+    mod.start(time);
+    car.stop(time + 5);
+    mod.stop(time + 5);
+    car.onended = () => g.disconnect();
   }
 
   // ---- rhythm section: vintage analog drum voices --------------------------
