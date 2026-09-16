@@ -164,8 +164,10 @@ function Zvuk() {
         </section>
 
         <footer
-          className={`transition-opacity duration-1000 ${panel ? "opacity-100" : "opacity-40"}`}
+          className={`relative isolate transition-opacity duration-1000 ${panel ? "opacity-100" : "opacity-40"}`}
         >
+          <div aria-hidden className="zvuk-scrim" />
+          <div className="relative">
           <div className="mb-6 flex flex-wrap gap-x-7 gap-y-3">
             {PRESETS.map((p) => (
               <button
