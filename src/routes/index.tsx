@@ -110,15 +110,30 @@ function Zvuk() {
           <p className="text-[10px] tracking-[0.32em] text-muted-foreground transition-opacity duration-1000">
             {playing ? label : "AN EVER-CHANGING ELECTRONIC SOUNDSCAPE"}
           </p>
-          <button
-            onClick={() => {
-              engine().mutate();
-              setPreset(null);
-            }}
-            className="text-[10px] tracking-[0.4em] text-muted-foreground transition-colors duration-500 hover:text-foreground"
-          >
-            MUTATE
-          </button>
+          <div className="flex items-center gap-8">
+            <button
+              onClick={() => {
+                const next = !rhythm;
+                setRhythm(next);
+                engine().setRhythm(next);
+              }}
+              aria-pressed={rhythm}
+              className={`text-[10px] tracking-[0.4em] transition-colors duration-500 ${
+                rhythm ? "text-accent" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              RHYTHM
+            </button>
+            <button
+              onClick={() => {
+                engine().mutate();
+                setPreset(null);
+              }}
+              className="text-[10px] tracking-[0.4em] text-muted-foreground transition-colors duration-500 hover:text-foreground"
+            >
+              MUTATE
+            </button>
+          </div>
         </section>
 
         <footer
