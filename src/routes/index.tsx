@@ -198,6 +198,7 @@ function Zvuk() {
           <p className="mt-8 text-[9px] tracking-[0.3em] text-muted-foreground/60">
             SOUND, IN MOTION
           </p>
+          </div>
         </footer>
       </div>
     </main>
