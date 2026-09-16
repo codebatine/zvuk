@@ -81,10 +81,19 @@ function Zvuk() {
     setPreset(null);
   };
 
-  const applyPreset = (name: string, p: Params) => {
+  const applyPreset = (name: string, p: Params, c?: Character) => {
     setParams({ ...p });
     engine().setParams(p);
+    if (c) {
+      setCharacter(c);
+      engine().setCharacter(c);
+    }
     setPreset(name);
+  };
+
+  const switchCharacter = (c: Character) => {
+    setCharacter(c);
+    engine().setCharacter(c);
   };
 
   return (
