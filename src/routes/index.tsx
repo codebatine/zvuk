@@ -6,6 +6,7 @@ import {
   DEFAULT_PARAMS,
   PRESETS,
   ZvukEngine,
+  type Character,
   type ParamKey,
   type Params,
 } from "@/lib/zvuk-engine";
