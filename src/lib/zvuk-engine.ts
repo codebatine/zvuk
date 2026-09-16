@@ -454,31 +454,43 @@ export class ZvukEngine {
 
     if (this.rhythm) this.drums(s, time, beat);
 
+    const eth = this.character === "ethereal";
 
     // sequencer pulse
-    if (p.pulse > 0.12 && Math.random() < 0.25 + p.pulse * 0.65) {
+    if (p.pulse > 0.12 && Math.random() < (eth ? 0.12 + p.pulse * 0.3 : 0.25 + p.pulse * 0.65)) {
       const deg = this.motif[s % this.motif.length]! + (Math.random() < 0.2 ? 7 : 0);
       const oct = Math.random() < 0.25 ? 1 : 0;
-      this.voice(this.degreeToMidi(deg, oct), time, beat * (0.4 + (1 - p.pulse) * 1.2), 0.05 + p.pulse * 0.07, 0.5 + p.pulse * 0.4);
+      this.voice(this.degreeToMidi(deg, oct), time, beat * (eth ? rand(2, 4) : 0.4 + (1 - p.pulse) * 1.2), (eth ? 0.035 : 0.05) + p.pulse * 0.07, 0.5 + p.pulse * 0.4);
     }
 
-    // sparse melodic motif
+    // sparse melodic motif — a sung line
     if (s % 8 === 0 && Math.random() < 0.3 + p.density * 0.5) {
       const deg = pick(this.motif) + 7;
-      this.voice(this.degreeToMidi(deg, 1), time + beat * rand(0, 0.5), beat * rand(2, 5), 0.045, 0.8);
+      this.voice(this.degreeToMidi(deg, 1), time + beat * rand(0, 0.5), beat * rand(eth ? 4 : 2, eth ? 9 : 5), 0.045, eth ? 0.5 : 0.8);
     }
 
-    // pad swell
+    // bells / zither points of light
+    if (eth && s % 4 === 0 && Math.random() < 0.18 + p.density * 0.45) {
+      this.bell(this.degreeToMidi(pick(this.motif) + pick([0, 7, 14]), 1), time + beat * rand(0, 0.6), 0.03 + p.density * 0.03);
+    }
+
+    // pad swell / choir
     if (s % 16 === 0 && Math.random() < 0.35 + p.density * 0.5) {
       const chordDegs = p.harmony > 0.6 ? [0, 2, 4, 6] : p.harmony > 0.3 ? [0, 2, 4] : [0, 4];
       const rot = Math.floor(rand(0, 4));
       chordDegs.forEach((d, i) =>
-        this.voice(this.degreeToMidi(d + rot), time + i * 0.08, beat * rand(6, 12), 0.035, 0.35 + p.harmony * 0.3),
+        this.voice(
+          this.degreeToMidi(d + rot, eth && i > 1 ? 1 : 0),
+          time + i * (eth ? rand(0.3, 1.1) : 0.08),
+          beat * rand(eth ? 10 : 6, eth ? 20 : 12),
+          eth ? 0.03 : 0.035,
+          0.35 + p.harmony * 0.3,
+        ),
       );
     }
 
     // low sub accent
-    if (s % 16 === 0 && p.pulse > 0.4) {
+    if (s % 16 === 0 && p.pulse > 0.4 && !eth) {
       this.voice(this.root - 12, time, beat * 2, 0.07, 0.15);
     }
 
