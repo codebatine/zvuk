@@ -48,6 +48,7 @@ function Zvuk() {
   const [preset, setPreset] = useState<string | null>(null);
   const [panel, setPanel] = useState(false);
   const [rhythm, setRhythm] = useState(false);
+  const [character, setCharacter] = useState<Character>("analog");
 
   const engine = () => {
     if (!engineRef.current) {
