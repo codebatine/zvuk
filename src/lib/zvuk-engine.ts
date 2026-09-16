@@ -131,6 +131,26 @@ export class ZvukEngine {
     this.delay.connect(this.master);
     this.delay.connect(this.reverbGain);
 
+    // Rhythm bus — dry-ish, with a touch of the same room
+    this.drumBus = ctx.createGain();
+    this.drumBus.gain.value = 0.9;
+    this.drumBus.connect(this.master);
+    const drumSend = ctx.createGain();
+    drumSend.gain.value = 0.22;
+    this.drumBus.connect(drumSend);
+    drumSend.connect(this.reverbGain);
+    const drumEcho = ctx.createGain();
+    drumEcho.gain.value = 0.12;
+    this.drumBus.connect(drumEcho);
+    drumEcho.connect(this.delayGain);
+
+    // noise source for hats / brushes
+    const nlen = Math.floor(ctx.sampleRate * 1);
+    const nbuf = ctx.createBuffer(1, nlen, ctx.sampleRate);
+    const nd = nbuf.getChannelData(0);
+    for (let i = 0; i < nlen; i++) nd[i] = Math.random() * 2 - 1;
+    this.noiseBuf = nbuf;
+
     // Drone
     this.droneFilter = ctx.createBiquadFilter();
     this.droneFilter.type = "lowpass";
