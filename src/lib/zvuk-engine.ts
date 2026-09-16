@@ -63,8 +63,12 @@ export class ZvukEngine {
   private droneGain!: GainNode;
   private droneFilter!: BiquadFilterNode;
   private droneOscs: OscillatorNode[] = [];
+  private drumBus!: GainNode;
+  private noiseBuf: AudioBuffer | null = null;
   private timer: number | null = null;
   private data!: Uint8Array<ArrayBuffer>;
+  rhythm = false;
+  private groove = 0; // pattern variant
 
   params: Params = { ...DEFAULT_PARAMS };
   private root = 62; // D
