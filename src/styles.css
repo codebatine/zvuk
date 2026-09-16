@@ -207,7 +207,7 @@
     oklch(0.125 0.004 60 / 0.45) 52%,
     oklch(0.125 0.004 60 / 0) 100%
   );
-  backdrop-filter: blur(28px) saturate(112%);
+  backdrop-filter: blur(14px) saturate(112%);
   mask-image: radial-gradient(
     118% 100% at 50% 100%,
     #000 0%,
