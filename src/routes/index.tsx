@@ -47,6 +47,7 @@ function Zvuk() {
   const [label, setLabel] = useState("D MINOR · 72 BPM");
   const [preset, setPreset] = useState<string | null>(null);
   const [panel, setPanel] = useState(false);
+  const [rhythm, setRhythm] = useState(false);
 
   const engine = () => {
     if (!engineRef.current) {
