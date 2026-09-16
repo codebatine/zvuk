@@ -195,6 +195,27 @@
   }
 }
 
+/* Diffuse, edgeless backdrop that lifts the control area off the moving field. */
+@utility zvuk-scrim {
+  position: absolute;
+  inset: -3.5rem -6rem -4rem;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    115% 95% at 50% 100%,
+    oklch(0.125 0.004 60 / 0.8) 0%,
+    oklch(0.125 0.004 60 / 0.45) 52%,
+    oklch(0.125 0.004 60 / 0) 100%
+  );
+  backdrop-filter: blur(14px) saturate(112%);
+  mask-image: radial-gradient(
+    118% 100% at 50% 100%,
+    #000 0%,
+    #000 48%,
+    transparent 92%
+  );
+}
+
 @utility zvuk-fade {
   animation: zvuk-fade-in 1.6s ease-out both;
 }

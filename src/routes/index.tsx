@@ -164,38 +164,41 @@ function Zvuk() {
         </section>
 
         <footer
-          className={`transition-opacity duration-1000 ${panel ? "opacity-100" : "opacity-40"}`}
+          className={`relative isolate transition-opacity duration-1000 ${panel ? "opacity-100" : "opacity-40"}`}
         >
-          <div className="mb-6 flex flex-wrap gap-x-7 gap-y-3">
-            {PRESETS.map((p) => (
-              <button
-                key={p.name}
-                onClick={() => applyPreset(p.name, p.params, p.character ?? "analog")}
-                className={`text-[10px] tracking-[0.3em] transition-colors duration-500 ${
-                  preset === p.name
-                    ? "text-accent"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {p.name}
-              </button>
-            ))}
+          <div aria-hidden className="zvuk-scrim" />
+          <div className="relative">
+            <div className="mb-6 flex flex-wrap gap-x-7 gap-y-3">
+              {PRESETS.map((p) => (
+                <button
+                  key={p.name}
+                  onClick={() => applyPreset(p.name, p.params, p.character ?? "analog")}
+                  className={`text-[10px] tracking-[0.3em] transition-colors duration-500 ${
+                    preset === p.name
+                      ? "text-accent"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-x-12 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+              {CONTROLS.map((c) => (
+                <ZvukSlider
+                  key={c.key}
+                  label={c.label}
+                  low={c.low}
+                  high={c.high}
+                  value={params[c.key]}
+                  onChange={(v) => update(c.key, v)}
+                />
+              ))}
+            </div>
+            <p className="mt-8 text-[9px] tracking-[0.3em] text-muted-foreground/60">
+              SOUND, IN MOTION
+            </p>
           </div>
-          <div className="grid gap-x-12 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-            {CONTROLS.map((c) => (
-              <ZvukSlider
-                key={c.key}
-                label={c.label}
-                low={c.low}
-                high={c.high}
-                value={params[c.key]}
-                onChange={(v) => update(c.key, v)}
-              />
-            ))}
-          </div>
-          <p className="mt-8 text-[9px] tracking-[0.3em] text-muted-foreground/60">
-            SOUND, IN MOTION
-          </p>
         </footer>
       </div>
     </main>
