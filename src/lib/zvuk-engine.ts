@@ -231,11 +231,17 @@ export class ZvukEngine {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     const p = this.params;
-    this.reverbGain.gain.setTargetAtTime(0.18 + p.space * 0.75, t, 1.5);
+    const eth = this.character === "ethereal";
+    this.reverbGain.gain.setTargetAtTime((eth ? 0.4 : 0.18) + p.space * (eth ? 0.9 : 0.75), t, 1.5);
     this.delayGain.gain.setTargetAtTime(0.1 + p.space * 0.4, t, 1.5);
     this.delayFb.gain.setTargetAtTime(0.25 + p.space * 0.4, t, 1.5);
-    this.droneFilter.frequency.setTargetAtTime(220 + p.warmth * 300 + (1 - p.warmth) * 500, t, 3);
-    this.droneGain.gain.setTargetAtTime(0.1 + (1 - p.pulse) * 0.14, t, 3);
+    this.droneFilter.frequency.setTargetAtTime((eth ? 180 : 220) + p.warmth * 300 + (1 - p.warmth) * 500, t, 3);
+    this.droneGain.gain.setTargetAtTime((eth ? 0.08 : 0.1) + (1 - p.pulse) * 0.14, t, 3);
+  }
+
+  setCharacter(c: Character) {
+    this.character = c;
+    this.applyParams();
   }
 
   private scale() {
