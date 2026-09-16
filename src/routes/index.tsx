@@ -120,7 +120,22 @@ function Zvuk() {
           <p className="text-[10px] tracking-[0.32em] text-muted-foreground transition-opacity duration-1000">
             {playing ? label : "AN EVER-CHANGING ELECTRONIC SOUNDSCAPE"}
           </p>
+          <div className="flex items-center gap-5">
+            {(["analog", "ethereal"] as Character[]).map((c) => (
+              <button
+                key={c}
+                onClick={() => switchCharacter(c)}
+                aria-pressed={character === c}
+                className={`text-[10px] tracking-[0.4em] transition-colors duration-500 ${
+                  character === c ? "text-foreground" : "text-muted-foreground/60 hover:text-foreground"
+                }`}
+              >
+                {c.toUpperCase()}
+              </button>
+            ))}
+          </div>
           <div className="flex items-center gap-8">
+
             <button
               onClick={() => {
                 const next = !rhythm;
