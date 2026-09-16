@@ -284,6 +284,120 @@ export class ZvukEngine {
     oscs[oscs.length - 1]!.onended = () => out.disconnect();
   }
 
+  // ---- rhythm section: vintage analog drum voices --------------------------
+
+  private noise(time: number, dur: number, level: number, type: BiquadFilterType, freq: number, q = 1) {
+    const ctx = this.ctx!;
+    if (!this.noiseBuf) return;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noiseBuf;
+    src.loop = true;
+    src.playbackRate.value = rand(0.9, 1.1);
+    const f = ctx.createBiquadFilter();
+    f.type = type;
+    f.frequency.value = freq;
+    f.Q.value = q;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, time);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, level), time + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+    src.connect(f);
+    f.connect(g);
+    g.connect(this.drumBus);
+    src.start(time);
+    src.stop(time + dur + 0.05);
+    src.onended = () => g.disconnect();
+  }
+
+  private kick(time: number, level: number) {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator();
+    o.type = "sine";
+    const g = ctx.createGain();
+    const f0 = rand(108, 124);
+    o.frequency.setValueAtTime(f0, time);
+    o.frequency.exponentialRampToValueAtTime(rand(40, 46), time + 0.09);
+    g.gain.setValueAtTime(0.0001, time);
+    g.gain.exponentialRampToValueAtTime(level, time + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.34);
+    o.connect(g);
+    g.connect(this.drumBus);
+    o.start(time);
+    o.stop(time + 0.42);
+    o.onended = () => g.disconnect();
+    // soft analog click
+    this.noise(time, 0.02, level * 0.12, "bandpass", 1800, 1.4);
+  }
+
+  private tom(time: number, level: number, hi = false) {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator();
+    o.type = "sine";
+    const g = ctx.createGain();
+    const f0 = hi ? rand(230, 260) : rand(150, 175);
+    o.frequency.setValueAtTime(f0, time);
+    o.frequency.exponentialRampToValueAtTime(f0 * 0.55, time + 0.25);
+    g.gain.setValueAtTime(0.0001, time);
+    g.gain.exponentialRampToValueAtTime(level, time + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.3);
+    o.connect(g);
+    g.connect(this.drumBus);
+    o.start(time);
+    o.stop(time + 0.38);
+    o.onended = () => g.disconnect();
+  }
+
+  private rim(time: number, level: number) {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator();
+    o.type = "triangle";
+    o.frequency.value = rand(1300, 1600);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, time);
+    g.gain.exponentialRampToValueAtTime(level, time + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.06);
+    o.connect(g);
+    g.connect(this.drumBus);
+    o.start(time);
+    o.stop(time + 0.09);
+    o.onended = () => g.disconnect();
+    this.noise(time, 0.05, level * 0.5, "bandpass", 2600, 2);
+  }
+
+  private hat(time: number, level: number, open = false) {
+    this.noise(time, open ? 0.2 : 0.045, level, "highpass", open ? 6500 : 8200, 0.8);
+  }
+
+  private drums(s: number, time: number, beat: number) {
+    const p = this.params;
+    const lvl = (0.28 + p.pulse * 0.5) * (0.75 + p.density * 0.5);
+    const hatLvl = 0.035 * lvl * 6;
+    const half = beat / 2; // one step
+    const g = this.groove;
+
+    if (g === 0) {
+      // motorik — steady pulse, hypnotic 16ths
+      if (s % 2 === 0) this.kick(time, lvl * (s % 8 === 0 ? 0.95 : 0.7));
+      this.hat(time, hatLvl * (s % 2 === 0 ? 0.5 : 0.85), false);
+      if (p.density > 0.35) this.hat(time + half * 0.5, hatLvl * 0.4);
+      if (s === 4 || s === 12) this.rim(time, lvl * 0.45);
+      if (s === 15 && p.density > 0.6 && Math.random() < 0.4) this.tom(time, lvl * 0.5, true);
+    } else if (g === 1) {
+      // half-time berlin pulse
+      if (s === 0 || s === 8) this.kick(time, lvl * 0.95);
+      if (s === 6 || s === 14) this.kick(time, lvl * 0.6);
+      if (s % 4 === 2) this.rim(time, lvl * 0.4);
+      if (s % 2 === 1) this.hat(time, hatLvl * 0.6, s === 11);
+      if (s === 13 && Math.random() < 0.3) this.tom(time, lvl * 0.5);
+    } else {
+      // drifting brush pattern
+      if (s === 0) this.kick(time, lvl * 0.8);
+      if (s === 9 && Math.random() < 0.7) this.kick(time, lvl * 0.5);
+      if (s % 4 === 2) this.hat(time, hatLvl * 0.7, true);
+      if (Math.random() < 0.18 + p.density * 0.25) this.tom(time + rand(0, half), lvl * 0.35, Math.random() < 0.5);
+    }
+  }
+
   private schedule(time: number) {
     const p = this.params;
     const s = this.step;
