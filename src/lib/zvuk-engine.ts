@@ -546,11 +546,27 @@ export class ZvukEngine {
 
   private tick = () => {
     const ctx = this.ctx!;
+    if (ctx.state === "suspended") {
+      void ctx.resume();
+      return;
+    }
     const stepDur = (60 / this.bpm) / 2;
-    while (this.nextTime < ctx.currentTime + 0.3) {
+    // if the tab was throttled/asleep, don't "catch up" thousands of steps —
+    // just rejoin the present moment and keep flowing
+    if (this.nextTime < ctx.currentTime - 0.1) {
+      this.nextTime = ctx.currentTime + 0.05;
+    }
+    // generous lookahead so a throttled timer (background tab ~1/s) never starves
+    while (this.nextTime < ctx.currentTime + 1.5) {
       this.schedule(Math.max(this.nextTime, ctx.currentTime + 0.02));
       this.nextTime += stepDur;
     }
+  };
+
+  private onVisibility = () => {
+    if (!this.playing || !this.ctx) return;
+    if (this.ctx.state === "suspended") void this.ctx.resume();
+    this.tick();
   };
 
   async play() {
@@ -560,7 +576,8 @@ export class ZvukEngine {
     this.nextTime = ctx.currentTime + 0.1;
     this.master.gain.cancelScheduledValues(ctx.currentTime);
     this.master.gain.setTargetAtTime(0.85, ctx.currentTime, 2.2);
-    if (this.timer === null) this.timer = window.setInterval(this.tick, 25);
+    if (this.timer === null) this.timer = window.setInterval(this.tick, 100);
+    document.addEventListener("visibilitychange", this.onVisibility);
     this.playing = true;
     this.emit();
   }
@@ -569,6 +586,7 @@ export class ZvukEngine {
     if (!this.ctx) return;
     this.master.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 1.1);
     this.playing = false;
+    document.removeEventListener("visibilitychange", this.onVisibility);
     window.setTimeout(() => {
       if (!this.playing && this.timer !== null) {
         window.clearInterval(this.timer);
@@ -618,6 +636,7 @@ export class ZvukEngine {
 
   dispose() {
     if (this.timer !== null) window.clearInterval(this.timer);
+    document.removeEventListener("visibilitychange", this.onVisibility);
     this.ctx?.close();
     this.ctx = null;
   }
