@@ -404,7 +404,7 @@ export class ZvukEngine {
     o.connect(g);
     g.connect(this.drumBus);
     o.start(time);
-    o.stop(time + 0.38);
+    o.stop(time + 0.65);
     o.onended = () => g.disconnect();
   }
 
