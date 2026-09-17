@@ -586,6 +586,7 @@ export class ZvukEngine {
     if (!this.ctx) return;
     this.master.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 1.1);
     this.playing = false;
+    document.removeEventListener("visibilitychange", this.onVisibility);
     window.setTimeout(() => {
       if (!this.playing && this.timer !== null) {
         window.clearInterval(this.timer);
@@ -635,6 +636,7 @@ export class ZvukEngine {
 
   dispose() {
     if (this.timer !== null) window.clearInterval(this.timer);
+    document.removeEventListener("visibilitychange", this.onVisibility);
     this.ctx?.close();
     this.ctx = null;
   }
