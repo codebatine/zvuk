@@ -141,7 +141,7 @@ export class ZvukEngine {
     this.drumBus.gain.value = 0.9;
     this.drumBus.connect(this.master);
     const drumSend = ctx.createGain();
-    drumSend.gain.value = 0.22;
+    drumSend.gain.value = 0.3;
     this.drumBus.connect(drumSend);
     drumSend.connect(this.reverbGain);
     const drumEcho = ctx.createGain();
