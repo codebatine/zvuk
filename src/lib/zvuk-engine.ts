@@ -141,7 +141,7 @@ export class ZvukEngine {
     this.drumBus.gain.value = 0.9;
     this.drumBus.connect(this.master);
     const drumSend = ctx.createGain();
-    drumSend.gain.value = 0.22;
+    drumSend.gain.value = 0.3;
     this.drumBus.connect(drumSend);
     drumSend.connect(this.reverbGain);
     const drumEcho = ctx.createGain();
@@ -374,19 +374,20 @@ export class ZvukEngine {
     const o = ctx.createOscillator();
     o.type = "sine";
     const g = ctx.createGain();
-    const f0 = rand(108, 124);
+    // deep, round, slow-sweeping — more ceremonial drum than machine kick
+    const f0 = rand(72, 86);
     o.frequency.setValueAtTime(f0, time);
-    o.frequency.exponentialRampToValueAtTime(rand(40, 46), time + 0.09);
+    o.frequency.exponentialRampToValueAtTime(rand(32, 38), time + 0.22);
     g.gain.setValueAtTime(0.0001, time);
-    g.gain.exponentialRampToValueAtTime(level, time + 0.006);
-    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.34);
+    g.gain.exponentialRampToValueAtTime(level, time + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.65);
     o.connect(g);
     g.connect(this.drumBus);
     o.start(time);
-    o.stop(time + 0.42);
+    o.stop(time + 0.75);
     o.onended = () => g.disconnect();
-    // soft analog click
-    this.noise(time, 0.02, level * 0.12, "bandpass", 1800, 1.4);
+    // faint breath of air on the skin of the drum
+    this.noise(time, 0.09, level * 0.06, "lowpass", 900, 0.7);
   }
 
   private tom(time: number, level: number, hi = false) {
@@ -394,16 +395,16 @@ export class ZvukEngine {
     const o = ctx.createOscillator();
     o.type = "sine";
     const g = ctx.createGain();
-    const f0 = hi ? rand(230, 260) : rand(150, 175);
+    const f0 = hi ? rand(150, 175) : rand(95, 115);
     o.frequency.setValueAtTime(f0, time);
-    o.frequency.exponentialRampToValueAtTime(f0 * 0.55, time + 0.25);
+    o.frequency.exponentialRampToValueAtTime(f0 * 0.6, time + 0.4);
     g.gain.setValueAtTime(0.0001, time);
-    g.gain.exponentialRampToValueAtTime(level, time + 0.008);
-    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.3);
+    g.gain.exponentialRampToValueAtTime(level, time + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.55);
     o.connect(g);
     g.connect(this.drumBus);
     o.start(time);
-    o.stop(time + 0.38);
+    o.stop(time + 0.65);
     o.onended = () => g.disconnect();
   }
 
@@ -430,31 +431,35 @@ export class ZvukEngine {
 
   private drums(s: number, time: number, beat: number) {
     const p = this.params;
-    const lvl = (0.28 + p.pulse * 0.5) * (0.75 + p.density * 0.5);
-    const hatLvl = 0.035 * lvl * 6;
+    const lvl = (0.3 + p.pulse * 0.5) * (0.75 + p.density * 0.5);
+    const hatLvl = 0.02 * lvl * 6;
     const half = beat / 2; // one step
     const g = this.groove;
 
     if (g === 0) {
-      // motorik — steady pulse, hypnotic 16ths
-      if (s % 2 === 0) this.kick(time, lvl * (s % 8 === 0 ? 0.95 : 0.7));
-      this.hat(time, hatLvl * (s % 2 === 0 ? 0.5 : 0.85), false);
-      if (p.density > 0.35) this.hat(time + half * 0.5, hatLvl * 0.4);
-      if (s === 4 || s === 12) this.rim(time, lvl * 0.45);
-      if (s === 15 && p.density > 0.6 && Math.random() < 0.4) this.tom(time, lvl * 0.5, true);
-    } else if (g === 1) {
-      // half-time berlin pulse
+      // heartbeat rite — deep slow pulse, sparse low toms, air instead of hats
       if (s === 0 || s === 8) this.kick(time, lvl * 0.95);
-      if (s === 6 || s === 14) this.kick(time, lvl * 0.6);
-      if (s % 4 === 2) this.rim(time, lvl * 0.4);
-      if (s % 2 === 1) this.hat(time, hatLvl * 0.6, s === 11);
-      if (s === 13 && Math.random() < 0.3) this.tom(time, lvl * 0.5);
+      if (s === 11 && Math.random() < 0.5 + p.pulse * 0.3) this.kick(time, lvl * 0.55);
+      if (s === 6 && Math.random() < 0.3 + p.density * 0.4) this.tom(time, lvl * 0.5);
+      if (s === 14 && Math.random() < 0.3 + p.density * 0.4) this.tom(time, lvl * 0.45, true);
+      if (s % 8 === 4 && Math.random() < 0.4 + p.density * 0.3)
+        this.noise(time, beat * 1.4, hatLvl * 3.2, "lowpass", 1400, 0.5); // long soft breath
+    } else if (g === 1) {
+      // slow ceremonial sway — every hit earns its place
+      if (s === 0) this.kick(time, lvl);
+      if (s === 10 && Math.random() < 0.4 + p.pulse * 0.35) this.kick(time, lvl * 0.6);
+      if (s === 4 && Math.random() < 0.35 + p.density * 0.35) this.tom(time, lvl * 0.55);
+      if (s === 13 && Math.random() < 0.3 + p.density * 0.3) this.rim(time, lvl * 0.3);
+      if (s === 8 && Math.random() < 0.5)
+        this.noise(time, beat * 1.2, hatLvl * 2.6, "bandpass", 2400, 0.6); // distant shimmer
     } else {
-      // drifting brush pattern
-      if (s === 0) this.kick(time, lvl * 0.8);
-      if (s === 9 && Math.random() < 0.7) this.kick(time, lvl * 0.5);
-      if (s % 4 === 2) this.hat(time, hatLvl * 0.7, true);
-      if (Math.random() < 0.18 + p.density * 0.25) this.tom(time + rand(0, half), lvl * 0.35, Math.random() < 0.5);
+      // drifting deep-water pulse — barely a rhythm, more a tide
+      if (s === 0) this.kick(time, lvl * 0.9);
+      if (s === 12 && Math.random() < 0.45) this.kick(time, lvl * 0.5);
+      if (Math.random() < 0.14 + p.density * 0.22)
+        this.tom(time + rand(0, half), lvl * 0.35, Math.random() < 0.5);
+      if (s === 6 && Math.random() < 0.35)
+        this.noise(time, beat * 2, hatLvl * 2.2, "lowpass", 1000, 0.5); // slow wash
     }
   }
 
