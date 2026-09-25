@@ -67,6 +67,12 @@ export class ZvukEngine {
   private droneGain!: GainNode;
   private droneFilter!: BiquadFilterNode;
   private droneOscs: OscillatorNode[] = [];
+  private wallBanks: { gain: GainNode; filters: BiquadFilterNode[]; voices: OscillatorNode[][] }[] = [];
+  private activeWall = -1;
+  private wallChangePending = false;
+  private wallColor = 0;
+  private airGain!: GainNode;
+  private airFilter!: BiquadFilterNode;
   private drumBus!: GainNode;
   private noiseBuf: AudioBuffer | null = null;
   private timer: number | null = null;
@@ -196,7 +202,74 @@ export class ZvukEngine {
     fg.connect(this.droneFilter.frequency);
     flfo.start();
 
+    // Two independently filtered, softly detuned chord banks. Crossfading between
+    // them lets a new harmony arrive without a pitch glide or an audible reset.
+    for (let bank = 0; bank < 2; bank++) {
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      gain.connect(this.master);
+      gain.connect(this.reverbGain);
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = bank === 0 ? -0.3 : 0.3;
+      pan.connect(gain);
+      const filters: BiquadFilterNode[] = [];
+      const voices: OscillatorNode[][] = [];
+      for (let i = 0; i < 3; i++) {
+        const filter = ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.Q.value = 0.65;
+        filter.frequency.value = 650;
+        filter.connect(pan);
+        filters.push(filter);
+        const oscillators: OscillatorNode[] = [];
+        for (let j = 0; j < 2; j++) {
+          const osc = ctx.createOscillator();
+          osc.type = j === 0 ? "sawtooth" : "triangle";
+          osc.detune.value = (j === 0 ? -1 : 1) * rand(3, 8);
+          const voiceGain = ctx.createGain();
+          voiceGain.gain.value = j === 0 ? 0.13 : 0.2;
+          osc.connect(voiceGain);
+          voiceGain.connect(filter);
+          osc.start();
+          oscillators.push(osc);
+        }
+        voices.push(oscillators);
+        // Each voice opens and closes at its own very slow rate, like a modular filter bank.
+        const lfo = ctx.createOscillator();
+        lfo.frequency.value = rand(0.008, 0.022);
+        const depth = ctx.createGain();
+        depth.gain.value = rand(140, 280);
+        lfo.connect(depth);
+        depth.connect(filter.frequency);
+        lfo.start();
+      }
+      this.wallBanks.push({ gain, filters, voices });
+    }
+
+    // A faint filtered air bed keeps the chord edges porous, not synthetic-flat.
+    const air = ctx.createBufferSource();
+    air.buffer = nbuf;
+    air.loop = true;
+    this.airFilter = ctx.createBiquadFilter();
+    this.airFilter.type = "bandpass";
+    this.airFilter.frequency.value = 500;
+    this.airFilter.Q.value = 0.45;
+    this.airGain = ctx.createGain();
+    this.airGain.gain.value = 0.008;
+    air.connect(this.airFilter);
+    this.airFilter.connect(this.airGain);
+    this.airGain.connect(this.reverbGain);
+    const airLfo = ctx.createOscillator();
+    airLfo.frequency.value = 0.013;
+    const airDepth = ctx.createGain();
+    airDepth.gain.value = 240;
+    airLfo.connect(airDepth);
+    airDepth.connect(this.airFilter.frequency);
+    air.start();
+    airLfo.start();
+
     this.applyParams();
+    this.changeWall(ctx.currentTime + 0.1);
   }
 
   private makeIR(seconds: number) {
@@ -223,6 +296,32 @@ export class ZvukEngine {
     });
   }
 
+  private changeWall(time: number) {
+    if (!this.ctx) return;
+    const next = (this.activeWall + 1) % 2;
+    const bank = this.wallBanks[next];
+    if (!bank) return;
+    const p = this.params;
+    // Keep a tonal center, but let upper chord tones slowly explore the mode.
+    const colors = p.harmony > 0.55 ? [[0, 2, 4], [0, 3, 5], [0, 4, 6], [0, 2, 5]] : [[0, 2, 4], [0, 2, 4], [0, 4, 6]];
+    this.wallColor = (this.wallColor + 1 + Math.floor(rand(0, colors.length - 1))) % colors.length;
+    const degrees = colors[this.wallColor] ?? colors[0];
+    if (!degrees) return;
+    bank.voices.forEach((pair, i) => {
+      const degree = degrees[i] ?? 0;
+      // The third voice occasionally floats an octave up; the low root remains anchored.
+      const midi = this.degreeToMidi(degree, i === 2 && Math.random() < 0.35 ? 0 : -1);
+      pair.forEach((osc) => osc.frequency.setValueAtTime(mtof(midi), time));
+    });
+    const level = 0.12 + p.density * 0.16;
+    bank.gain.gain.setTargetAtTime(level, time, 5);
+    if (this.activeWall >= 0) {
+      this.wallBanks[this.activeWall]?.gain.gain.setTargetAtTime(0.0001, time, 5);
+    }
+    this.activeWall = next;
+    this.wallChangePending = false;
+  }
+
   setParam(k: ParamKey, v: number) {
     this.params[k] = v;
     this.applyParams();
@@ -242,6 +341,14 @@ export class ZvukEngine {
     this.delayFb.gain.setTargetAtTime(0.25 + p.space * 0.4, t, 1.5);
     this.droneFilter.frequency.setTargetAtTime((eth ? 180 : 220) + p.warmth * 300 + (1 - p.warmth) * 500, t, 3);
     this.droneGain.gain.setTargetAtTime((eth ? 0.08 : 0.1) + (1 - p.pulse) * 0.14, t, 3);
+    this.wallBanks.forEach((bank, i) => {
+      if (i === this.activeWall) bank.gain.gain.setTargetAtTime(0.12 + p.density * 0.16, t, 3);
+      bank.filters.forEach((filter, voice) => {
+        filter.frequency.setTargetAtTime(380 + p.warmth * 430 + p.motion * 300 + voice * 110, t, 5);
+      });
+    });
+    this.airGain.gain.setTargetAtTime(0.004 + p.density * 0.01, t, 4);
+    this.airFilter.frequency.setTargetAtTime(380 + p.motion * 330, t, 5);
   }
 
   setCharacter(c: Character) {
@@ -289,7 +396,7 @@ export class ZvukEngine {
         v.connect(vg);
         vg.connect(o.detune);
         v.start(time);
-        v.stop(time + dur + 0.8);
+        v.stop(time + dur + 1.8);
         const g = ctx.createGain();
         g.gain.value = i === 2 ? 0.35 : 1;
         o.connect(g);
@@ -298,7 +405,7 @@ export class ZvukEngine {
         o.connect(filt);
       }
       o.start(time);
-      o.stop(time + dur + 0.6);
+      o.stop(time + dur + (eth ? 1.8 : 0.6));
       oscs.push(o);
     }
     filt.connect(out);
@@ -514,6 +621,7 @@ export class ZvukEngine {
     if (this.step === 0) {
       this.bar++;
       this.evolve();
+      if (this.bar % 8 === 0 || this.wallChangePending) this.changeWall(time);
     }
   }
 
@@ -606,6 +714,7 @@ export class ZvukEngine {
 
   mutate() {
     // same machine, new direction
+    this.wallChangePending = true;
     if (Math.random() < 0.5) this.groove = (this.groove + pick([1, 2])) % 3;
     this.motif = this.motif.map((d) => (Math.random() < 0.5 ? d + pick([-2, -1, 1, 2]) : d));
     if (Math.random() < 0.5) this.root += pick([-3, 2, 3, -5]);
@@ -637,6 +746,9 @@ export class ZvukEngine {
   dispose() {
     if (this.timer !== null) window.clearInterval(this.timer);
     document.removeEventListener("visibilitychange", this.onVisibility);
+    this.playing = false;
+    this.wallBanks = [];
+    this.activeWall = -1;
     this.ctx?.close();
     this.ctx = null;
   }
