@@ -313,7 +313,7 @@ export class ZvukEngine {
       const midi = this.degreeToMidi(degree, i === 2 && Math.random() < 0.35 ? 0 : -1);
       pair.forEach((osc) => osc.frequency.setValueAtTime(mtof(midi), time));
     });
-    const level = 0.2 + p.density * 0.23;
+    const level = 0.12 + p.density * 0.16;
     bank.gain.gain.setTargetAtTime(level, time, 5);
     if (this.activeWall >= 0) {
       this.wallBanks[this.activeWall]?.gain.gain.setTargetAtTime(0.0001, time, 5);
@@ -342,7 +342,7 @@ export class ZvukEngine {
     this.droneFilter.frequency.setTargetAtTime((eth ? 180 : 220) + p.warmth * 300 + (1 - p.warmth) * 500, t, 3);
     this.droneGain.gain.setTargetAtTime((eth ? 0.08 : 0.1) + (1 - p.pulse) * 0.14, t, 3);
     this.wallBanks.forEach((bank, i) => {
-      if (i === this.activeWall) bank.gain.gain.setTargetAtTime(0.2 + p.density * 0.23, t, 3);
+      if (i === this.activeWall) bank.gain.gain.setTargetAtTime(0.12 + p.density * 0.16, t, 3);
       bank.filters.forEach((filter, voice) => {
         filter.frequency.setTargetAtTime(380 + p.warmth * 430 + p.motion * 300 + voice * 110, t, 5);
       });

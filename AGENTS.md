@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep ZVUK's evolving harmonic wall in the browser Web Audio engine as two crossfading chord banks; this preserves uninterrupted playback while new colors enter without retriggering the piece.
